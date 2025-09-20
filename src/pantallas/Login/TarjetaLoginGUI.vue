@@ -3,12 +3,14 @@
     <LogoLoginGUI />
 
     <div class="formulario">
+      <!-- Campo de correo -->
       <input 
         type="text" 
-        placeholder="Usuario" 
+        placeholder="Correo" 
         v-model="usuario"
       />
 
+      <!-- Campo de contraseña -->
       <div class="campo-password">
         <input 
           :type="mostrarPassword ? 'text' : 'password'" 
@@ -21,7 +23,7 @@
       </div>
     </div>
 
-    <BotonGUI tipo="primario" @click="iniciarSesion">Entrar</BotonGUI>
+    <BotonGUI tipo="primario" @click="iniciarSesionClick">Entrar</BotonGUI>
 
     <p class="registro">
       ¿Todavía no tienes una cuenta?
@@ -34,6 +36,7 @@
 import LogoLoginGUI from "./LogoLoginGUI.vue";
 import BotonGUI from "../../components/BotonGUI.vue";
 import Swal from "sweetalert2";
+import { iniciarSesion } from "@/backend/autenticacion"; // 🔑 import backend
 
 export default {
   name: "TarjetaLoginGUI",
@@ -49,16 +52,29 @@ export default {
     togglePassword() {
       this.mostrarPassword = !this.mostrarPassword;
     },
-    iniciarSesion() {
-      Swal.fire({
-        title: "¡Bienvenido!",
-        text: `Has iniciado sesión como ${this.usuario}`,
-        icon: "success",
-        confirmButtonText: "Continuar",
-        confirmButtonColor: "#67b2b4"
-      }).then(() => {
-        this.$router.push("/registrador"); 
-      });
+    async iniciarSesionClick() {
+      try {
+        await iniciarSesion(this.usuario, this.contrasena);
+
+        Swal.fire({
+          title: "¡Bienvenido! 🎉",
+          text: `Has iniciado sesión como ${this.usuario}`,
+          icon: "success",
+          confirmButtonText: "Continuar",
+          confirmButtonColor: "#67b2b4"
+        }).then(() => {
+          this.$router.push("/registrador");
+        });
+
+      } catch (error) {
+        Swal.fire({
+          title: "Error",
+          text: error.message,
+          icon: "error",
+          confirmButtonText: "Intentar de nuevo",
+          confirmButtonColor: "#e74c3c"
+        });
+      }
     },
     irARegistro() {
       this.$router.push("/registro");

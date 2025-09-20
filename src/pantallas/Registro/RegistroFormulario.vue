@@ -1,6 +1,7 @@
 <template>
   <div class="formulario">
-    <input type="text" placeholder="Usuario" v-model="localUsuario" />
+    <!-- Correo -->
+    <input type="text" placeholder="Correo" v-model="localCorreo" />
 
     <!-- Contraseña -->
     <div class="campo-password">
@@ -27,37 +28,39 @@
     </div>
 
     <!-- Botón registrar -->
-    <button class="btn-registrar" @click="$emit('registrar')">
+    <button class="btn-registrar" @click="registrarUsuarioClick">
       Registrar
     </button>
   </div>
 </template>
 
 <script>
+import { registrarUsuario } from "@/backend/autenticacion";
+import Swal from "sweetalert2";
+
 export default {
   name: "RegistroFormulario",
   props: {
-    usuario: String,
+    correo: String,
     contrasena: String,
     confirmar: String,
     mostrarPassword: Boolean,
     mostrarConfirmar: Boolean,
   },
   emits: [
-    "update:usuario",
+    "update:correo",
     "update:contrasena",
     "update:confirmar",
     "update:mostrarPassword",
     "update:mostrarConfirmar",
-    "registrar",
   ],
   computed: {
-    localUsuario: {
+    localCorreo: {
       get() {
-        return this.usuario;
+        return this.correo;
       },
       set(value) {
-        this.$emit("update:usuario", value);
+        this.$emit("update:correo", value);
       },
     },
     localContrasena: {
@@ -99,6 +102,36 @@ export default {
     },
     toggleConfirmar() {
       this.$emit("update:mostrarConfirmar", !this.mostrarConfirmar);
+    },
+    async registrarUsuarioClick() {
+      if (this.localContrasena !== this.localConfirmar) {
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Las contraseñas no coinciden",
+          confirmButtonColor: "#67b2b4",
+        });
+        return;
+      }
+
+      try {
+        await registrarUsuario(this.localCorreo, this.localContrasena);
+        Swal.fire({
+          icon: "success",
+          title: "¡Registro exitoso!",
+          text: `Correo "${this.localCorreo}" registrado correctamente 🎉`,
+          confirmButtonColor: "#67b2b4",
+        }).then(() => {
+          this.$router.push("/login");
+        });
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: error.message,
+          confirmButtonColor: "#67b2b4",
+        });
+      }
     },
   },
 };

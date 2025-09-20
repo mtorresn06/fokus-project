@@ -9,7 +9,7 @@
 
       <!-- Formulario -->
       <RegistroFormulario
-        v-model:usuario="usuario"
+        v-model:correo="correo"
         v-model:contrasena="contrasena"
         v-model:confirmar="confirmar"
         v-model:mostrarPassword="mostrarPassword"
@@ -29,6 +29,7 @@
 <script>
 import RegistroLogo from "./RegistroLogo.vue";
 import RegistroFormulario from "./RegistroFormulario.vue";
+import { registrarUsuario } from "../../backend/autenticacion";
 import Swal from "sweetalert2";
 
 export default {
@@ -36,7 +37,7 @@ export default {
   components: { RegistroLogo, RegistroFormulario },
   data() {
     return {
-      usuario: "",
+      correo: "",
       contrasena: "",
       confirmar: "",
       mostrarPassword: false,
@@ -44,7 +45,7 @@ export default {
     };
   },
   methods: {
-    registrarUsuario() {
+    async registrarUsuario() {
       if (this.contrasena !== this.confirmar) {
         Swal.fire({
           icon: "error",
@@ -55,14 +56,24 @@ export default {
         return;
       }
 
-      Swal.fire({
-        icon: "success",
-        title: "¡Registro exitoso!",
-        text: `Usuario "${this.usuario}" creado correctamente`,
-        confirmButtonColor: "#67b2b4",
-      }).then(() => {
-        this.$router.push("/registrador");
-      });
+      try {
+        await registrarUsuario(this.correo, this.contrasena);
+        Swal.fire({
+          icon: "success",
+          title: "¡Registro exitoso!",
+          text: `Correo "${this.correo}" registrado correctamente`,
+          confirmButtonColor: "#67b2b4",
+        }).then(() => {
+          this.$router.push("/registrador");
+        });
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: error.message,
+          confirmButtonColor: "#67b2b4",
+        });
+      }
     },
     irAInicio() {
       this.$router.push("/");
