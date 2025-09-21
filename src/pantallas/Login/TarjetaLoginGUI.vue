@@ -63,7 +63,7 @@ export default {
           confirmButtonText: "Continuar",
           confirmButtonColor: "#67b2b4"
         }).then(() => {
-          this.$router.push("/registrador");
+          this.$router.push("/home");
         });
 
       } catch (error) {
