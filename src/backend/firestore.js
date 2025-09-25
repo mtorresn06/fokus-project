@@ -17,8 +17,8 @@ export const crearTarea = async (uid, tarea) => {
     titulo: tarea.titulo,
     descripcion: tarea.descripcion || "",
     estado: tarea.estado || "Pendiente",
-    fechaLimite: tarea.fechaLimite || "",   // 
-    importancia: tarea.importancia || "baja", // 
+    fechaLimite: tarea.fechaLimite || "", 
+    importancia: tarea.importancia || "baja", 
     creadoEn: new Date(),
   };
 
