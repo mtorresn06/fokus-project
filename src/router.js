@@ -4,16 +4,23 @@ import LoginGUI from "./pantallas/Login/LoginGUI.vue";
 import RegistroGUI from "./pantallas/Registro/RegistroGUI.vue";
 import Home from "./pantallas/Home/Home.vue";
 import Edicion from "./pantallas/Edicion/Edicion.vue";
+import PerfilGUI from './pantallas/Perfil/PerfilGUI.vue' 
 
 const routes = [
   { path: "/", component: InicioGUI },
-  { path: "/login", component: LoginGUI },
+  { 
+    path: "/login", 
+    name: "Login", 
+    component: LoginGUI 
+  },
   { path: "/registro", component: RegistroGUI },
   { path: "/home", component: Home },
-  {
-    path: "/tarea/nueva",
-    name: "NuevaTarea",
-    component: Edicion,
+  { path: "/tarea/nueva", name: "NuevaTarea", component: Edicion,
+  },
+    {
+    path: '/Perfil',
+    name: 'PerfilGUI',
+    component: PerfilGUI
   },
   {
     path: "/tarea/editar/:id",

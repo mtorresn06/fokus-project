@@ -36,7 +36,7 @@
 import LogoLoginGUI from "./LogoLoginGUI.vue";
 import BotonGUI from "../../components/BotonGUI.vue";
 import Swal from "sweetalert2";
-import { iniciarSesion } from "@/backend/autenticacion"; // 🔑 import backend
+import { iniciarSesion } from "@/backend/autenticacion"; 
 
 export default {
   name: "TarjetaLoginGUI",

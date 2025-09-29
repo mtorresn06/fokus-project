@@ -1,8 +1,12 @@
 <template>
   <div class="container">
-    <h1 class="titulo">Mis Tareas</h1>
+    <div class="header">
+      <h1 class="titulo">Mis Tareas</h1>
+      <button class="icono-perfil-btn" @click="irAPerfil">
+        <i class="fa-solid fa-user-circle"></i>
+      </button>
+    </div>
 
-    <!-- Filtros -->
     <div class="filtros">
       <button
         v-for="f in filtros"
@@ -14,16 +18,15 @@
       </button>
     </div>
 
-    <!-- Botón crear -->
     <button class="btn-nueva" @click="irACrear">
       <i class="fa-solid fa-plus"></i> Nueva tarea
     </button>
 
-    <!-- Lista filtrada -->
     <ul class="lista">
       <li v-for="t in tareasFiltradas" :key="t.id" class="item">
         <div class="info">
-          <h3 :class="colorImportancia(t.importancia)">
+          <span :class="['importancia-dot', colorImportancia(t.importancia)]"></span>
+          <h3 class="titulo-tarea">
             {{ t.titulo }}
           </h3>
           <small>{{ t.estado }} • Fecha límite: {{ t.fechaLimite || "—" }}</small>
@@ -88,6 +91,9 @@ export default {
     irAEditar(id) {
       this.$router.push({ name: "EditarTarea", params: { id } });
     },
+    irAPerfil() {
+      this.$router.push({ name: "PerfilGUI" });
+    },
     colorImportancia(nivel) {
       if (nivel === "alta") return "rojo";
       if (nivel === "media") return "naranja";
@@ -116,14 +122,45 @@ export default {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ====== ENCABEZADO ====== */
+.header {
+  display: flex;
+  justify-content: center; /* Centra el contenido horizontalmente */
+  align-items: center;
+  margin-bottom: 20px;
+  position: relative; /* Para posicionar el botón de perfil de forma absoluta */
+}
+
 /* ====== TÍTULO ====== */
 .titulo {
   font-size: 26px;
   font-weight: 700;
-  margin-bottom: 20px;
   color: #28a5a7;
-  text-align: center;
   letter-spacing: 0.5px;
+  margin: 0;
+  text-align: center; /* Asegura el centrado si el flex no lo hace para el texto en sí */
+  flex-grow: 1; /* Permite que el título ocupe el espacio disponible para centrarse */
+}
+
+/* ====== BOTÓN PERFIL ====== */
+.icono-perfil-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #28a5a7;
+  cursor: pointer;
+  padding: 5px;
+  transition: all 0.25s ease;
+  line-height: 1;
+  position: absolute; /* Posicionamiento absoluto */
+  right: 0; /* A la derecha del `header` */
+  top: 50%; /* Centra verticalmente */
+  transform: translateY(-50%); /* Ajusta para centrado perfecto */
+}
+.icono-perfil-btn:hover {
+  color: #2ec8c8;
+  transform: translateY(-50%) scale(1.1); /* Ajusta la transformación para el hover */
+  filter: drop-shadow(0 0 5px rgba(40, 165, 167, 0.5));
 }
 
 /* ====== FILTROS ====== */
@@ -201,15 +238,51 @@ export default {
   box-shadow: 0 4px 12px rgba(40, 165, 167, 0.15);
 }
 
-/* ====== COLORES DE IMPORTANCIA ====== */
-.rojo { color: #e74c3c; font-weight: bold; }
-.naranja { color: #e67e22; font-weight: bold; }
-.verde { color: #27ae60; font-weight: bold; }
+.info {
+  display: flex; /* Para alinear la bolita y el título */
+  align-items: center;
+  gap: 10px; /* Espacio entre la bolita y el título */
+  flex-grow: 1; /* Permite que la info ocupe el espacio disponible */
+}
+
+.titulo-tarea {
+  margin: 0; /* Elimina márgenes predeterminados del h3 */
+  font-size: 17px;
+  color: #333; /* Color de texto más neutral para el título de la tarea */
+  font-weight: 600;
+}
+
+small {
+  margin-left: auto; /* Empuja la pequeña información a la derecha si es necesario */
+  color: #777;
+  font-size: 12px;
+  white-space: nowrap; /* Evita que la fecha/estado se rompa en varias líneas */
+}
+
+/* ====== BOLITA DE IMPORTANCIA (NUEVO) ====== */
+.importancia-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0; /* Evita que la bolita se encoja */
+}
+/* Colores de las bolitas */
+.importancia-dot.rojo { background-color: #e74c3c; }
+.importancia-dot.naranja { background-color: #e67e22; }
+.importancia-dot.verde { background-color: #27ae60; }
+
+
+/* ====== COLORES DE IMPORTANCIA (MODIFICADO) ====== */
+.rojo { color: #e74c3c; } 
+.naranja { color: #e67e22; }
+.verde { color: #27ae60; }
 
 /* ====== ACCIONES ====== */
 .acciones {
-  display: flex;
-  gap: 10px;
+display: flex;
+  gap: 15px; /* Mayor separación entre los botones de acción */
+  margin-left: 20px; /* Aumenta el espacio de separación con la fecha/texto */
+  flex-shrink: 0; /* Asegura que no se encoja para mantener la separación */
 }
 .icono-btn {
   background: none;
