@@ -69,7 +69,7 @@ export default {
     tareasFiltradas() {
       if (this.filtro === "Todas") return this.tareas;
       if (this.filtro === "Pendientes")
-        return this.tareas.filter((t) => t.estado === "Pendiente");
+        return this.tareas.filter((t) => t.estado === "Pendiente" || t.estado === "En Progreso");
       if (this.filtro === "Completadas")
         return this.tareas.filter((t) => t.estado === "Completada");
       if (this.filtro === "Importantes")
@@ -138,8 +138,8 @@ export default {
   color: #28a5a7;
   letter-spacing: 0.5px;
   margin: 0;
-  text-align: center; /* Asegura el centrado si el flex no lo hace para el texto en sí */
-  flex-grow: 1; /* Permite que el título ocupe el espacio disponible para centrarse */
+  text-align: center; 
+  flex-grow: 1;
 }
 
 /* ====== BOTÓN PERFIL ====== */

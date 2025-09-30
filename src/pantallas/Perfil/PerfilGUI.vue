@@ -1,7 +1,7 @@
 <template>
   <div class="container-perfil">
     <button class="btn-regresar" @click="regresar">
-      <i class="fa-solid fa-arrow-left"></i> Volver a Tareas
+      <i class="fa-solid fa-arrow-left"></i> Home
     </button>
     
     <div class="tarjeta-perfil">
@@ -43,6 +43,10 @@
   {{ cargandoLogout ? 'Cerrando Sesión...' : 'Cerrar Sesión' }}
 </button>
       
+      <button class="btn-eliminar-cuenta" @click="manejarEliminarCuenta">
+        Eliminar Cuenta
+      </button>
+
       <p v-if="errorLogout" class="error-message">{{ errorLogout }}</p>
       
     </div>
@@ -51,7 +55,8 @@
 
 <script>
 import { getAuth } from "firebase/auth";
-import { cerrarSesion } from "@/backend/autenticacion"; 
+import { cerrarSesion, cambiarContrasena } from "@/backend/autenticacion"; 
+import Swal from 'sweetalert2';
 
 export default {
   data() {
@@ -91,12 +96,94 @@ export default {
             }
         },
 
-    iniciarEdicionContrasena() {
-        // 1. Mostrar un modal o un formulario.
-        // 2. Pedir la contraseña actual.
-        // 3. Pedir la nueva contraseña (dos veces).
-        // 4. Llamar a una función de Firebase (updatePassword o similar).
+ async iniciarEdicionContrasena() {
+      if (!this.usuario) {
+        Swal.fire('Error', 'No se pudieron cargar los datos del usuario.', 'error');
+        return;
+      }
+
+      // --- Pedir Contraseña Actual para Reautenticación ---
+      const { value: contrasenaActual } = await Swal.fire({
+        title: 'Verificación de Seguridad',
+        text: 'Ingresa tu contraseña actual para confirmar el cambio.',
+        input: 'password',
+        inputPlaceholder: 'Contraseña Actual',
+        showCancelButton: true,
+        confirmButtonText: 'Siguiente',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        customClass: {
+          confirmButton: 'btn-alerta-principal',
+          cancelButton: 'btn-alerta-secundaria'
+        }
+      });
+
+      if (!contrasenaActual) return; // El usuario canceló o no ingresó nada
+
+      // --- Pedir la Nueva Contraseña ---
+      const { value: formValues } = await Swal.fire({
+        title: 'Nueva Contraseña',
+        html:
+          '<input id="swal-input1" class="swal2-input" type="password" placeholder="Nueva Contraseña">' +
+          '<input id="swal-input2" class="swal2-input" type="password" placeholder="Confirmar Nueva Contraseña">',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Cambiar Contraseña',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+          const nueva1 = document.getElementById('swal-input1').value;
+          const nueva2 = document.getElementById('swal-input2').value;
+          
+          if (!nueva1 || !nueva2) {
+            Swal.showValidationMessage('Ambos campos de contraseña son obligatorios.');
+            return false;
+          }
+          if (nueva1 !== nueva2) {
+            Swal.showValidationMessage('Las nuevas contraseñas no coinciden.');
+            return false;
+          }
+          if (nueva1.length < 6) {
+             Swal.showValidationMessage('La contraseña debe tener al menos 6 caracteres.');
+             return false;
+          }
+          return [nueva1];
+        },
+        customClass: {
+          confirmButton: 'btn-alerta-principal',
+          cancelButton: 'btn-alerta-secundaria'
+        }
+      });
+
+      if (!formValues) return; // El usuario canceló o falló la validación
+
+      const [nuevaContrasena] = formValues;
+
+      // --- PASO 3: Llamar al Backend de Firebase ---
+      try {
+        await cambiarContrasena(this.usuario, contrasenaActual, nuevaContrasena);
+        Swal.fire(
+          '¡Éxito!',
+          'Tu contraseña ha sido actualizada correctamente.',
+          'success'
+        );
+      } catch (error) {
+        let mensaje = 'Ocurrió un error inesperado al actualizar la contraseña.';
         
+        // Manejo de errores comunes de Firebase
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            mensaje = 'La contraseña actual ingresada es incorrecta. Inténtalo de nuevo.';
+        } else if (error.code === 'auth/requires-recent-login') {
+             mensaje = 'Debes cerrar sesión y volver a iniciar sesión para realizar este cambio por seguridad.';
+        } else {
+             console.error("Error al cambiar contraseña:", error.code, error.message);
+        }
+
+        Swal.fire(
+          'Error',
+          mensaje,
+          'error'
+        );
+      }
     }
   },
 };
@@ -106,7 +193,7 @@ export default {
 /* ====== CONTENEDOR GENERAL ====== */
 .container-perfil {
   max-width: 600px;
-  margin: 40px auto;
+  margin: 10px auto;
   padding: 20px;
   animation: fadeIn 0.6s ease-in-out;
 }
@@ -176,6 +263,10 @@ export default {
   padding-top: 25px;
 }
 
+.seccion.configuracion .subtitulo {
+  margin-bottom: 10px; /* Pequeño ajuste visual */
+}
+
 .opcion {
   display: flex;
   justify-content: space-between;
@@ -207,7 +298,7 @@ export default {
 .editar-pass {
   background: none;
   border: none;
-  color: #28a5a7;
+  color: #515a5a;
   font-size: 18px;
   cursor: pointer;
   transition: color 0.2s, transform 0.2s;
@@ -215,7 +306,7 @@ export default {
 }
 
 .editar-pass:hover {
-  color: #2ec8c8;
+  color: #444;
   transform: scale(1.1);
 }
 
@@ -317,4 +408,45 @@ input:focus + .slider {
 input:checked + .slider:before {
   transform: translateX(22px);
 }
+
+.btn-alerta-principal {
+  background-color: #28a5a7 !important; /* Color principal de tu app */
+  border: 1px solid #28a5a7 !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+.btn-alerta-principal:hover {
+  background-color: #2ec8c8 !important;
+}
+
+.btn-alerta-secundaria {
+  background-color: #fff !important;
+  border: 1px solid #ccc !important;
+  color: #444 !important;
+  box-shadow: none !important;
+}
+
+.btn-alerta-secundaria:hover {
+  background-color: #f0f0f0 !important;
+}
+
+/* ====== NUEVO BOTÓN ELIMINAR CUENTA ====== */
+.btn-eliminar-cuenta {
+  width: 100%;
+  background: #ffffff; /* Blanco */
+  color: #e74c3c; /* Letras Rojas */
+  padding: 12px;
+  border: 2px solid #e74c3c; /* Borde Rojo */
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  margin-top: 15px; /* Espacio debajo de Cerrar Sesión */
+  transition: background-color 0.3s ease;
+}
+
+.btn-eliminar-cuenta:hover {
+  background: #fdf5f5; /* Un blanco muy tenue al pasar el ratón */
+}
+
 </style>
