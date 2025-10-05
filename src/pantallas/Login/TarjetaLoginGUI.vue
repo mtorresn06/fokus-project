@@ -57,7 +57,7 @@ export default {
         await iniciarSesion(this.usuario, this.contrasena);
 
         Swal.fire({
-          title: "¡Bienvenido! 🎉",
+          title: "¡Bienvenido!",
           text: `Has iniciado sesión como ${this.usuario}`,
           icon: "success",
           confirmButtonText: "Continuar",

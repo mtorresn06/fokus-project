@@ -24,12 +24,13 @@
           </div>
         </div>
 
+        <!-- SECCIÓN MODIFICADA: Vista Compacta -->
         <div class="seccion configuracion">
-          <h2 class="subtitulo">Configuración de notificaciones</h2>
+          <h2 class="subtitulo">Visualización</h2>
           <div class="opcion">
-            <p class="etiqueta-opcion">Recordatorio de tareas próximas</p>
+            <p class="etiqueta-opcion">Activar Vista Compacta (Más tareas por pantalla)</p>
             <label class="switch">
-              <input type="checkbox" v-model="notificacionesActivas">
+              <input type="checkbox" v-model="vistaCompactaActiva" @change="guardarVistaCompacta">
               <span class="slider round"></span>
             </label>
           </div>
@@ -40,11 +41,16 @@
       </div>
       
       <button class="btn-logout" @click="manejarCerrarSesion" :disabled="cargandoLogout">
-  {{ cargandoLogout ? 'Cerrando Sesión...' : 'Cerrar Sesión' }}
-</button>
+        {{ cargandoLogout ? 'Cerrando Sesión...' : 'Cerrar Sesión' }}
+      </button>
       
-      <button class="btn-eliminar-cuenta" @click="manejarEliminarCuenta">
-        Eliminar Cuenta
+      <!-- BOTÓN ELIMINAR CUENTA ESTILIZADO -->
+      <button 
+        class="btn-eliminar-cuenta" 
+        @click="manejarEliminarCuenta" 
+        :disabled="cargandoEliminar"
+      >
+        {{ cargandoEliminar ? 'Eliminando...' : 'Eliminar Cuenta' }}
       </button>
 
       <p v-if="errorLogout" class="error-message">{{ errorLogout }}</p>
@@ -55,16 +61,18 @@
 
 <script>
 import { getAuth } from "firebase/auth";
-import { cerrarSesion, cambiarContrasena } from "@/backend/autenticacion"; 
+import { cerrarSesion, cambiarContrasena, eliminarCuenta } from "@/backend/autenticacion"; 
 import Swal from 'sweetalert2';
 
 export default {
   data() {
     return {
       usuario: null,
-      notificacionesActivas: true, 
+      // MODIFICADO: Cambiado de recordatoriosActivos a vistaCompactaActiva
+      vistaCompactaActiva: false, 
       errorLogout: null,
-      cargandoLogout: false 
+      cargandoLogout: false,
+      cargandoEliminar: false,
     };
   },
   
@@ -74,29 +82,119 @@ export default {
     auth.onAuthStateChanged((user) => {
         this.usuario = user;
     });
+    // NUEVO: Cargar el estado de la vista compacta al crear el componente
+    this.cargarVistaCompacta();
   },
 
   methods: {
+    // NUEVO MÉTODO
+    cargarVistaCompacta() {
+      const storedValue = localStorage.getItem('vistaCompactaActiva');
+      // Convertir el string 'true'/'false' de localStorage a boolean
+      this.vistaCompactaActiva = storedValue === 'true';
+    },
+
+    // NUEVO MÉTODO
+    guardarVistaCompacta() {
+      localStorage.setItem('vistaCompactaActiva', this.vistaCompactaActiva);
+    },
+
     regresar() {
-      // Usamos el path que ya confirmamos que funciona
       this.$router.push('/home'); 
     },
     
-  async manejarCerrarSesion() {
-            this.errorLogout = null;
-            this.cargandoLogout = true;
-            try {
-                await cerrarSesion(); 
-                this.$router.push({ name: 'Login' });
-            } catch (error) {
-                console.error("Error al cerrar sesión:", error.code, error.message);
-                this.errorLogout = "Error al cerrar sesión. Verifica tu conexión.";
-                } finally {
+    async manejarCerrarSesion() {
+        this.errorLogout = null;
+        this.cargandoLogout = true;
+        try {
+            await cerrarSesion(); 
+            this.$router.push({ name: 'Login' });
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error.code, error.message);
+            this.errorLogout = "Error al cerrar sesión. Verifica tu conexión.";
+            } finally {
         this.cargandoLogout = false;
             }
         },
 
- async iniciarEdicionContrasena() {
+    async manejarEliminarCuenta() {
+      if (!this.usuario) {
+        Swal.fire('Error', 'No se pudieron cargar los datos del usuario.', 'error');
+        return;
+      }
+
+      // --- PASO 1: Confirmación de Seguridad ---
+      const resultadoConfirmacion = await Swal.fire({
+          title: '¿Estás absolutamente seguro/a?',
+          text: "¡Esta acción es irreversible! Se borrarán todas tus tareas.",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, Eliminar Permanentemente',
+          cancelButtonText: 'Cancelar',
+          customClass: {
+            confirmButton: 'btn-alerta-principal-eliminar',
+            cancelButton: 'btn-alerta-secundaria'
+          }
+      });
+
+      if (!resultadoConfirmacion.isConfirmed) return;
+
+      // --- PASO 2: Reautenticación por Seguridad (Pedir Contraseña) ---
+      const { value: contrasenaActual } = await Swal.fire({
+        title: 'Verificación de Contraseña',
+        text: 'Ingresa tu contraseña actual para confirmar la eliminación de la cuenta.',
+        input: 'password',
+        inputPlaceholder: 'Contraseña Actual',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar Eliminación',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        customClass: {
+          confirmButton: 'btn-alerta-principal-eliminar',
+          cancelButton: 'btn-alerta-secundaria'
+        },
+        preConfirm: (value) => {
+          if (!value) {
+            Swal.showValidationMessage('La contraseña es obligatoria.');
+            return false;
+          }
+          return value;
+        }
+      });
+
+      if (!contrasenaActual) return;
+
+      // --- PASO 3: Llamar al Backend para Eliminar ---
+      this.cargandoEliminar = true;
+      try {
+        await eliminarCuenta(this.usuario, contrasenaActual); 
+        
+        Swal.fire(
+          '¡Cuenta Eliminada!',
+          'Tu cuenta ha sido eliminada permanentemente. Serás redirigido al inicio de sesión.',
+          'success'
+        ).then(() => {
+          this.$router.push({ name: 'Login' });
+        });
+
+      } catch (error) {
+        let mensaje = 'Ocurrió un error inesperado al eliminar la cuenta.';
+        
+        if (error.code === 'auth/requires-recent-login') {
+             mensaje = 'Debes volver a iniciar sesión para realizar esta acción de alta seguridad.';
+        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+             mensaje = 'La contraseña ingresada es incorrecta. Inténtalo de nuevo.';
+        } else {
+             console.error("Error al eliminar cuenta:", error.code, error.message);
+        }
+
+        Swal.fire('Error', mensaje, 'error');
+      } finally {
+        this.cargandoEliminar = false;
+      }
+    },
+
+    async iniciarEdicionContrasena() {
       if (!this.usuario) {
         Swal.fire('Error', 'No se pudieron cargar los datos del usuario.', 'error');
         return;
@@ -143,8 +241,8 @@ export default {
             return false;
           }
           if (nueva1.length < 6) {
-             Swal.showValidationMessage('La contraseña debe tener al menos 6 caracteres.');
-             return false;
+              Swal.showValidationMessage('La contraseña debe tener al menos 6 caracteres.');
+              return false;
           }
           return [nueva1];
         },
@@ -173,9 +271,9 @@ export default {
         if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
             mensaje = 'La contraseña actual ingresada es incorrecta. Inténtalo de nuevo.';
         } else if (error.code === 'auth/requires-recent-login') {
-             mensaje = 'Debes cerrar sesión y volver a iniciar sesión para realizar este cambio por seguridad.';
+              mensaje = 'Debes cerrar sesión y volver a iniciar sesión para realizar este cambio por seguridad.';
         } else {
-             console.error("Error al cambiar contraseña:", error.code, error.message);
+              console.error("Error al cambiar contraseña:", error.code, error.message);
         }
 
         Swal.fire(
@@ -236,6 +334,10 @@ export default {
 }
 
 /* ====== SECCIONES DE DATOS ====== */
+.secciones-datos {
+  margin-bottom: 30px;
+}
+
 .seccion {
   margin-bottom: 25px;
 }
@@ -278,6 +380,8 @@ export default {
   font-size: 16px;
   color: #222;
   margin: 0;
+  flex-grow: 1; /* Permite que el texto ocupe el espacio */
+  padding-right: 10px;
 }
 
 /* ====== CAMPO CONTRASEÑA ====== */
@@ -341,7 +445,7 @@ export default {
   color: #2ec8c8;
 }
 
-/* ====== BOTÓN CERRAR SESIÓN ====== */
+/* ====== BOTONES ACCIÓN ====== */
 .btn-logout {
   width: 100%;
   background: #e74c3c;
@@ -352,11 +456,38 @@ export default {
   cursor: pointer;
   font-weight: 700;
   margin-top: 30px;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, opacity 0.3s;
 }
 
-.btn-logout:hover {
+.btn-logout:hover:not(:disabled) {
   background: #c0392b;
+}
+
+.btn-logout:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-eliminar-cuenta {
+  width: 100%;
+  background: #ffffff;
+  color: #e74c3c;
+  padding: 12px;
+  border: 2px solid #e74c3c;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  margin-top: 15px;
+  transition: background-color 0.3s ease, opacity 0.3s;
+}
+
+.btn-eliminar-cuenta:hover:not(:disabled) {
+  background: #fdf5f5;
+}
+
+.btn-eliminar-cuenta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ====== ESTILOS DEL TOGGLE (SWITCH) ====== */
@@ -365,6 +496,7 @@ export default {
   display: inline-block;
   width: 50px;
   height: 28px;
+  flex-shrink: 0; /* Evita que el switch se encoja */
 }
 
 .switch input {
@@ -382,7 +514,7 @@ export default {
   bottom: 0;
   background-color: #ccc;
   transition: .4s;
-  border-radius: 28px; /* Estilo redondeado */
+  border-radius: 28px;
 }
 
 .slider:before {
@@ -394,7 +526,7 @@ export default {
   bottom: 4px;
   background-color: white;
   transition: .4s;
-  border-radius: 50%; /* Estilo redondeado */
+  border-radius: 50%;
 }
 
 input:checked + .slider {
@@ -409,8 +541,9 @@ input:checked + .slider:before {
   transform: translateX(22px);
 }
 
+/* Estilos de SweetAlert2 */
 .btn-alerta-principal {
-  background-color: #28a5a7 !important; /* Color principal de tu app */
+  background-color: #28a5a7 !important;
   border: 1px solid #28a5a7 !important;
   color: white !important;
   box-shadow: none !important;
@@ -418,6 +551,16 @@ input:checked + .slider:before {
 
 .btn-alerta-principal:hover {
   background-color: #2ec8c8 !important;
+}
+
+.btn-alerta-principal-eliminar {
+  background-color: #e74c3c !important;
+  border: 1px solid #e74c3c !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+.btn-alerta-principal-eliminar:hover {
+  background-color: #c0392b !important;
 }
 
 .btn-alerta-secundaria {
@@ -430,23 +573,4 @@ input:checked + .slider:before {
 .btn-alerta-secundaria:hover {
   background-color: #f0f0f0 !important;
 }
-
-/* ====== NUEVO BOTÓN ELIMINAR CUENTA ====== */
-.btn-eliminar-cuenta {
-  width: 100%;
-  background: #ffffff; /* Blanco */
-  color: #e74c3c; /* Letras Rojas */
-  padding: 12px;
-  border: 2px solid #e74c3c; /* Borde Rojo */
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 700;
-  margin-top: 15px; /* Espacio debajo de Cerrar Sesión */
-  transition: background-color 0.3s ease;
-}
-
-.btn-eliminar-cuenta:hover {
-  background: #fdf5f5; /* Un blanco muy tenue al pasar el ratón */
-}
-
 </style>

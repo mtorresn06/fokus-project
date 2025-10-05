@@ -6,6 +6,7 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  deleteUser, 
 } from "firebase/auth";
 
 // Registrar
@@ -35,4 +36,19 @@ export const cambiarContrasena = async (usuario, contrasenaActual, nuevaContrase
 
   // 3. Actualizar la contraseña
   return await updatePassword(usuario, nuevaContrasena);
+};
+
+// NUEVA FUNCIONALIDAD: Eliminar Cuenta
+export const eliminarCuenta = async (usuario, contrasenaActual) => {
+  // 1. Crear una credencial con la contraseña actual
+  const credencial = EmailAuthProvider.credential(
+    usuario.email,
+    contrasenaActual
+  );
+
+  // 2. Reautenticar al usuario (es obligatorio antes de eliminar)
+  await reauthenticateWithCredential(usuario, credencial);
+
+  // 3. Eliminar la cuenta permanentemente
+  return await deleteUser(usuario);
 };

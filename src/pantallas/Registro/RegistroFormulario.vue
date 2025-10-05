@@ -119,7 +119,7 @@ export default {
         Swal.fire({
           icon: "success",
           title: "¡Registro exitoso!",
-          text: `Correo "${this.localCorreo}" registrado correctamente 🎉`,
+          text: `Correo "${this.localCorreo}" registrado correctamente`,
           confirmButtonColor: "#67b2b4",
         }).then(() => {
           this.$router.push("/login");
