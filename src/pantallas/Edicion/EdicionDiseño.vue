@@ -179,11 +179,7 @@ textarea {
     padding-right: 16px; 
 }
 input[type="text"], input[type="date"] {
-    padding-right: 16px;
-}
-select {
-    padding-right: 16px; 
-        cursor: pointer;
+    padding-right: 1px;
 }
 
 /* ====== BOTONES ====== */

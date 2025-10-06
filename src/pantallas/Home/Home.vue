@@ -2,6 +2,9 @@
   <div class="container">
     <div class="header">
       <h1 class="titulo">Mis Tareas</h1>
+      <button class="icono-perfil-btn icono-logout-btn" @click="cerrarSesion">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
       <button class="icono-perfil-btn" @click="irAPerfil">
         <i class="fa-solid fa-user-circle"></i>
       </button>
@@ -22,7 +25,6 @@
       <i class="fa-solid fa-plus"></i> Nueva tarea
     </button>
 
-    <!-- Clase dinámica 'compacta' basada en el estado del switch -->
     <ul :class="['lista', { 'compacta': vistaCompactaActiva }]">
       <li 
         v-for="t in tareasFiltradas" 
@@ -31,16 +33,18 @@
       >
         <div class="content-wrapper">
           <div class="info">
-            <!-- La bolita sigue indicando solo Importancia -->
-            <span :class="['importancia-dot', colorImportancia(t.importancia)]"></span>
-            <h3 class="titulo-tarea">
-              {{ t.titulo }}
-            </h3>
-            <small>
+            <div class="info-izquierda">
+              <span :class="['importancia-dot', colorImportancia(t.importancia)]"></span>
+              <h3 class="titulo-tarea">
+                {{ t.titulo }}
+              </h3>
+            </div>
+
+            <small class="info-derecha">
               <span v-if="isDueToday(t)" class="due-today">Vence HOY</span>
               <span v-else-if="isOverdue(t)" class="due-overdue">Vencida</span>
               <span v-else>{{ t.estado }}</span>
-               • Fecha límite: {{ t.fechaLimite || "—" }}
+              • Fecha límite: {{ t.fechaLimite || "—" }}
             </small>
           </div>
 
@@ -78,9 +82,11 @@
 </template>
 
 <script>
+// 1. IMPORTACIÓN AÑADIDA: Necesitas importar la función cerrarSesion
 import { obtenerTareas, borrarTarea } from "@/backend/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from 'sweetalert2';
+import { cerrarSesion } from "@/backend/autenticacion"; // <--- ESTA LÍNEA ES CLAVE
 
 // Función de utilidad: Comprueba si la fecha ya pasó (vencida)
 const isDatePast = (dateString) => {
@@ -229,6 +235,45 @@ export default {
     irAPerfil() {
       this.$router.push({ name: "PerfilGUI" });
     },
+    // 2. MÉTODO DE CERRAR SESIÓN MODIFICADO
+    async cerrarSesion() {
+      // 1. Confirmación de SweetAlert
+      const result = await Swal.fire({
+          title: 'Cerrar Sesión',
+          text: "¿Estás seguro que quieres salir?",
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#e74c3c',
+          cancelButtonColor: '#28a5a7',
+          confirmButtonText: 'Sí, salir',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (result.isConfirmed) {
+          try {
+              // 2. Llama a la función de backend
+              await cerrarSesion(); 
+              
+              // 3. Redirección a la vista 'Login'
+              this.$router.push({ name: 'Login' });
+              
+              // 4. Muestra SweetAlert de éxito (como en PerfilGUI)
+              Swal.fire(
+                  '¡Sesión Cerrada!',
+                  'Has salido de la aplicación.',
+                  'success'
+              );
+          } catch (error) {
+              // 5. Muestra SweetAlert de error si falla
+              console.error("Error al cerrar sesión:", error);
+              Swal.fire(
+                  'Error',
+                  'Hubo un problema al cerrar la sesión. Verifica tu conexión.',
+                  'error'
+              );
+          }
+      }
+    },
     colorImportancia(nivel) {
       if (nivel === "alta") return "rojo";
       if (nivel === "media") return "naranja";
@@ -277,7 +322,7 @@ export default {
   flex-grow: 1;
 }
 
-/* ====== BOTÓN PERFIL ====== */
+/* ====== BOTÓN PERFIL y LOGOUT (BASE) ====== */
 .icono-perfil-btn {
   background: none;
   border: none;
@@ -288,7 +333,8 @@ export default {
   transition: all 0.25s ease;
   line-height: 1;
   position: absolute;
-  right: 0;
+  /* Posición ajustada para Perfil: 5px del borde derecho */
+  right: 30px; 
   top: 50%;
   transform: translateY(-50%);
 }
@@ -297,6 +343,21 @@ export default {
   transform: translateY(-50%) scale(1.1);
   filter: drop-shadow(0 0 5px rgba(40, 165, 167, 0.5));
 }
+
+/* ESTILO Y POSICIÓN ESPECÍFICA PARA EL BOTÓN DE LOGOUT (NUEVO) */
+.icono-logout-btn {
+  color: #1d7c7e; /* Color diferente para destacar la acción */
+  right: 665px; 
+  font-size: 28px; 
+}
+
+/* Efecto hover para Logout */
+.icono-logout-btn:hover {
+  color: #28a5a7; 
+  transform: translateY(-50%) scale(1.1);
+  filter: drop-shadow(0 0 5px rgba(60, 220, 231, 0.5));
+}
+
 
 /* ====== FILTROS ====== */
 .filtros {
@@ -376,7 +437,7 @@ export default {
   box-shadow: 0 4px 12px rgba(40, 165, 167, 0.15);
 }
 
-/* --- ESTILOS DE BORDE POR ESTADO (NUEVOS) --- */
+/* --- ESTILOS DE BORDE POR ESTADO --- */
 .item.border-vencida {
     border-left: 5px solid #e74c3c; /* Rojo: Urgente */
 }
@@ -417,10 +478,6 @@ export default {
 }
 /* FIN DE ESTILOS VISTA COMPACTA */
 
-/* Eliminamos los selectores que ya no necesitamos gracias a las nuevas clases de borde */
-/* .item:has(.due-today) { border-left: 5px solid #e67e22; }
-.item:has(.due-overdue) { border-left: 5px solid #e74c3c; } */
-
 
 .content-wrapper {
   display: flex;
@@ -429,41 +486,58 @@ export default {
   width: 100%;
 }
 
+/* EL CONTENEDOR DE INFORMACIÓN DEBE USAR SPACE-BETWEEN */
 .info {
-  display: flex; /* Para alinear la bolita y el título */
-  align-items: center;
-  gap: 10px; /* Espacio entre la bolita y el título */
-  flex-grow: 1; /* Permite que la info ocupe el espacio disponible */
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  flex-grow: 1; 
   min-width: 0; 
+  gap: 15px; 
 }
 
+/* CONTENEDOR PARA EL LADO IZQUIERDO (Bolita + Título) */
+.info-izquierda {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* CONTENEDOR PARA EL LADO DERECHO (Fecha) - Es la etiqueta small */
+.info-derecha {
+    flex-shrink: 0; /* EVITA QUE SE ENCOJA */
+}
+
+
 .titulo-tarea {
-  margin: 0; /* Elimina márgenes predeterminados del h3 */
+  margin: 0; 
   font-size: 17px;
-  color: #333; /* Color de texto más neutral para el título de la tarea */
+  color: #333; 
   font-weight: 600;
-  white-space: nowrap; /* Evita el salto de línea */
-  overflow: hidden; /* Oculta el texto extra */
-  text-overflow: ellipsis; /* Añade puntos suspensivos */
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
 }
 .lista.compacta .titulo-tarea {
-  max-width: 180px; /* Limita el ancho del título en vista compacta */
+    max-width: 180px; 
 }
 
 
 small {
-  margin-left: 20px; /* Empuja la pequeña información a la derecha */
+  margin-left: 0; 
   color: #777;
   font-size: 12px;
-  white-space: nowrap; /* Evita que la fecha/estado se rompa en varias líneas */
-  display: flex; /* Para poder aplicar estilos específicos a los spans internos */
+  white-space: nowrap; 
+  display: flex; 
   gap: 8px;
   align-items: center;
-  flex-shrink: 0; /* Evita que se encoja cuando el título es muy largo */
 }
 
 .due-today {
-    color: #e67e22; /* Naranja */
+    color: #e67e22; 
     font-weight: 700;
     background-color: #fff3e0;
     padding: 2px 6px;
@@ -471,7 +545,7 @@ small {
 }
 
 .due-overdue {
-    color: #e74c3c; /* Rojo */
+    color: #e74c3c; 
     font-weight: 700;
     background-color: #fceaea;
     padding: 2px 6px;
@@ -484,7 +558,7 @@ small {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  flex-shrink: 0; /* Evita que la bolita se encoja */
+  flex-shrink: 0; 
 }
 /* Colores de las bolitas */
 .importancia-dot.rojo { background-color: #e74c3c; }
@@ -494,7 +568,7 @@ small {
 /* ====== ACCIONES ====== */
 .acciones {
 display: flex;
-  gap: 15px; /* Mayor separación entre los botones de acción */
+  gap: 15px; 
   margin-left: 20px;
   flex-shrink: 0; 
 }
@@ -556,19 +630,36 @@ display: flex;
     }
 
     .icono-perfil-btn {
-        font-size: 28px;
+        font-size: 24px; /* Ajuste para móvil */
+        right: 0;
+    }
+    
+    .icono-logout-btn {
+        font-size: 24px; /* Ajuste para móvil */
+        right: 35px; /* Ajuste para móvil */
     }
     
     .content-wrapper {
         align-items: flex-start;
     }
-
+    
     .info {
-        flex-direction: column;
+        flex-direction: column; 
         align-items: flex-start;
         gap: 2px;
         flex-basis: 70%;
+        justify-content: flex-start; 
     }
+
+    .info-izquierda {
+        width: 100%; 
+    }
+    
+    .info-derecha {
+        margin-left: 0; 
+        margin-top: 4px;
+    }
+
 
     .importancia-dot {
         display: none;
@@ -580,7 +671,7 @@ display: flex;
         overflow: visible;
         text-overflow: clip;
         max-width: 100%;
-        margin-bottom: 4px;
+        margin-bottom: 0; 
     }
 
     small {
